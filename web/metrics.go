@@ -9,10 +9,13 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/dmwm/dbs2go/dbs"
 	"github.com/dmwm/dbs2go/utils"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/load"
 	"github.com/shirou/gopsutil/mem"
@@ -127,6 +130,526 @@ type Metrics struct {
 	MigrationExistInDB  uint64 `json:"migrationExistInDB"`  // total number of exist in db migration requests across all services
 }
 
+// DBSMetrics stores custom metrics related to DBS.
+// commented out metrics are implemented as CounterFunc in InitMetrics
+type DBSMetrics struct {
+	cpuInfo []prometheus.Gauge
+
+	totalConnections       prometheus.Gauge
+	establishedConnections prometheus.Gauge
+	listenConnections      prometheus.Gauge
+
+	// procfs metrics
+	cpuTotal prometheus.Gauge
+	vsize    prometheus.Gauge
+	rss      prometheus.Gauge
+	openfds  prometheus.Gauge
+	maxfds   prometheus.Gauge
+	maxvsize prometheus.Gauge
+
+	// procfs /proc/stat metrics
+	sumusercpus   prometheus.Gauge
+	sumsystemcpus prometheus.Gauge
+
+	// cpu percent
+	cpupct prometheus.Gauge
+
+	// load
+	load1  prometheus.Gauge
+	load5  prometheus.Gauge
+	load15 prometheus.Gauge
+
+	// memory virtual
+	memvirttotal prometheus.Gauge
+	memvirtfree  prometheus.Gauge
+	memvirtused  prometheus.Gauge
+	memvirtpct   prometheus.Gauge
+
+	// memory swap
+	memswaptotal prometheus.Gauge
+	memswapfree  prometheus.Gauge
+	memswapused  prometheus.Gauge
+	memswappct   prometheus.Gauge
+
+	// open files
+	openfiles prometheus.Gauge
+
+	// go routines
+	// goroutines prometheus.Counter
+
+	// uptime
+	// uptime prometheus.Counter
+
+	// total requests
+	// getrequests  prometheus.Counter
+	// postrequests prometheus.Counter
+	// putrequests  prometheus.Counter
+
+	// throughput, rps, rps physical cpu, rps logical cpu
+	rps            prometheus.Gauge
+	avggettime     prometheus.Gauge
+	avgposttime    prometheus.Gauge
+	avgputtime     prometheus.Gauge
+	rpsphysicalcpu prometheus.Gauge
+	rpslogicalcpu  prometheus.Gauge
+
+	// database metrics
+	maxdbconn   prometheus.Gauge
+	maxidleconn prometheus.Gauge
+
+	// see https://pkg.go.dev/database/sql#DBStats
+	maxopenconn prometheus.Gauge
+	openconn    prometheus.Gauge
+	inuseconn   prometheus.Gauge
+	idleconn    prometheus.Gauge
+	// waitcount         prometheus.Counter
+	// waitduration      prometheus.Counter
+	// maxidleclosed     prometheus.Counter
+	// maxidletimeclosed prometheus.Counter
+	// maxlifetimeclosed prometheus.Counter
+
+	// migration server metrics
+	// requests   prometheus.Counter
+	// pending    prometheus.Counter
+	// inprogress prometheus.Counter
+	// failed     prometheus.Counter
+	// termfailed prometheus.Counter
+	// completed  prometheus.Counter
+	// queued     prometheus.Counter
+	// existindb  prometheus.Counter
+}
+
+var DbsMetrics DBSMetrics
+
+func InitMetrics(prefix string) {
+	c, _ := cpu.Percent(time.Millisecond, true)
+	DbsMetrics.cpuInfo = make([]prometheus.Gauge, len(c))
+	for i := range DbsMetrics.cpuInfo {
+		DbsMetrics.cpuInfo[i] = promauto.NewGauge(prometheus.GaugeOpts{
+			Name:        fmt.Sprintf("%s_cpu", prefix),
+			Help:        "percentage of cpu used per cpu",
+			ConstLabels: prometheus.Labels{"core": strconv.FormatInt(int64(i), 10)},
+		})
+	}
+
+	DbsMetrics.totalConnections = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_total_connections", prefix),
+		Help: "total number of connections",
+	})
+	DbsMetrics.establishedConnections = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_established_connections", prefix),
+		Help: "established connections",
+	})
+	DbsMetrics.listenConnections = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_listen_connections", prefix),
+		Help: "listen connections",
+	})
+
+	// procfs metrics
+	DbsMetrics.cpuTotal = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_procf_cputotal", prefix),
+		Help: "ProcFS CPU Total",
+	})
+	DbsMetrics.vsize = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_procf_vsize", prefix),
+		Help: "ProcFS vsize",
+	})
+	DbsMetrics.rss = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_procfs_rss", prefix),
+		Help: "ProcFS RSS",
+	})
+	DbsMetrics.openfds = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_procfs_openfds", prefix),
+		Help: "ProcFS OpenFDs",
+	})
+	DbsMetrics.maxfds = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_procfs_maxfds", prefix),
+		Help: "ProcFS MaxFDs",
+	})
+	DbsMetrics.maxvsize = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_procfs_maxvsize", prefix),
+		Help: "ProcFS MaxVSize",
+	})
+
+	// procfs /proc/stat metrics
+	DbsMetrics.sumusercpus = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_procfs_sumusercpus", prefix),
+		Help: "ProcFS SumUserCPUs",
+	})
+	DbsMetrics.sumsystemcpus = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_procfs_sumsystemcpus", prefix),
+		Help: "ProcFS SumSystemCPUs",
+	})
+
+	// cpu percent
+	DbsMetrics.cpupct = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_cpu_pct", prefix),
+	})
+
+	// load
+	DbsMetrics.load1 = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_load1", prefix),
+	})
+	DbsMetrics.load5 = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_load5", prefix),
+	})
+	DbsMetrics.load15 = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_load15", prefix),
+	})
+
+	// memory virtual
+	DbsMetrics.memvirttotal = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_mem_virt_total", prefix),
+		Help: "reports total virtual memory in bytes",
+	})
+	DbsMetrics.memvirtfree = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_mem_virt_free", prefix),
+		Help: "reports free virtual memory in bytes",
+	})
+	DbsMetrics.memvirtused = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_mem_virt_used", prefix),
+		Help: "reports used virtual memory in bytes",
+	})
+	DbsMetrics.memvirtpct = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_mem_virt_pct", prefix),
+		Help: "reports percentage of virtual memory",
+	})
+
+	// memory swap
+	DbsMetrics.memswaptotal = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_mem_swap_total", prefix),
+		Help: "reports total swap memory in bytes",
+	})
+	DbsMetrics.memswapfree = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_mem_swap_free", prefix),
+		Help: "reports free swap memory in bytes",
+	})
+	DbsMetrics.memswapused = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_mem_swap_used", prefix),
+		Help: "reports used swap memory in bytes",
+	})
+	DbsMetrics.memswappct = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_mem_swap_pct", prefix),
+		Help: "reports percentage swap memory",
+	})
+
+	// open files
+	DbsMetrics.openfiles = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_open_files", prefix),
+		Help: "reports total number of open file descriptors",
+	})
+
+	// go routines
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_goroutines", prefix),
+			Help: "reports total number of go routines",
+		},
+		func() float64 { return float64(runtime.NumGoroutine()) },
+	)); err == nil {
+		fmt.Println("CounterFunc '_goroutines' registered")
+	}
+
+	// go uptime
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_uptime", prefix),
+			Help: "reports server uptime in seconds",
+		},
+		func() float64 { return float64(time.Since(StartTime).Seconds()) },
+	)); err == nil {
+		fmt.Println("CounterFunc '_uptime' registered")
+	}
+
+	// go uptime
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_get_requests", prefix),
+			Help: "reports total number of HTTP GET requests",
+		},
+		func() float64 { return float64(TotalGetRequests) },
+	)); err == nil {
+		fmt.Println("CounterFunc '_get_requests' registered")
+	}
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_post_requests", prefix),
+			Help: "reports total number of HTTP POST requests",
+		},
+		func() float64 { return float64(TotalPostRequests) },
+	)); err == nil {
+		fmt.Println("CounterFunc '_post_requests' registered")
+	}
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_put_requests", prefix),
+			Help: "reports total number of HTTP PUT requests",
+		},
+		func() float64 { return float64(TotalPutRequests) },
+	)); err == nil {
+		fmt.Println("CounterFunc '_put_requests' registered")
+	}
+
+	// throughput, rps, rps physical cpu, rps logical cpu
+	DbsMetrics.rps = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_rps", prefix),
+		Help: "reports request per second average",
+	})
+	DbsMetrics.avggettime = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_avg_get_time", prefix),
+		Help: "reports average get request time",
+	})
+	DbsMetrics.avgposttime = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_avg_post_time", prefix),
+		Help: "reports average post request time",
+	})
+	DbsMetrics.avgputtime = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_avg_put_time", prefix),
+		Help: "reports average put request time",
+	})
+	DbsMetrics.rpsphysicalcpu = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_rps_physical_cpu", prefix),
+		Help: "reports request per second average weighted by physical CPU cores",
+	})
+	DbsMetrics.rpslogicalcpu = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_rps_logical_cpu", prefix),
+		Help: "reports request per second average weighted by logical CPU cores",
+	})
+
+	// database metrics
+	DbsMetrics.maxdbconn = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_max_db_connections", prefix),
+		Help: "reports max number of DB conenctions",
+	})
+	DbsMetrics.maxidleconn = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_max_idle_connections", prefix),
+		Help: "reports max number of idle DB connections",
+	})
+
+	DbsMetrics.maxopenconn = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_max_open_connections", prefix),
+		Help: "reports max number of open DB connections",
+	})
+	DbsMetrics.openconn = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_open_connections", prefix),
+		Help: "reports number of established to database (both in use and idle)",
+	})
+	DbsMetrics.inuseconn = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_in_use_connections", prefix),
+		Help: "reports number of in use database connections",
+	})
+	DbsMetrics.idleconn = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: fmt.Sprintf("%s_idle_connections", prefix),
+		Help: "reports number of idle database connections",
+	})
+	// register wait_count
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_wait_count", prefix),
+			Help: "reports total number of connections waited for",
+		},
+		func() float64 { return float64(dbs.DB.Stats().WaitCount) },
+	)); err == nil {
+		fmt.Println("CounterFunc 'wait_count' registered")
+	}
+	// register wait_duration
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_wait_duration", prefix),
+			Help: "reports total time (in sec) blocked waiting for a new connection",
+		},
+		func() float64 { return float64(dbs.DB.Stats().WaitDuration.Seconds()) },
+	)); err == nil {
+		fmt.Println("CounterFunc 'wait_duration' registered")
+	}
+	// register max_idle_closed
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_max_idle_closed", prefix),
+			Help: "reports total number of connections closed due to SetMaxIdleConns",
+		},
+		func() float64 { return float64(dbs.DB.Stats().MaxIdleClosed) },
+	)); err == nil {
+		fmt.Println("CounterFunc 'max_idle_closed' registered")
+	}
+	// register max_idle_time_closed
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_max_idle_time_closed", prefix),
+			Help: "reports total number of connections closed due to SetConnMaxIdleTime",
+		},
+		func() float64 { return float64(dbs.DB.Stats().MaxIdleTimeClosed) },
+	)); err == nil {
+		fmt.Println("CounterFunc 'max_idle_time_closed' registered")
+	}
+	// register max_lifetime_closed
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_max_lifetime_closed", prefix),
+			Help: "reports total number of connections closed due to SetConnMaxLifetime",
+		},
+		func() float64 { return float64(dbs.DB.Stats().MaxLifetimeClosed) },
+	)); err == nil {
+		fmt.Println("CounterFunc 'max_lifetime_closed' registered")
+	}
+
+	// migration server
+	// register _requests
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_requests", prefix),
+			Help: "reports total number of migration requests",
+		},
+		func() float64 { return float64(dbs.TotalMigrationRequests) },
+	)); err == nil {
+		fmt.Println("CounterFunc '_requests' registered")
+	}
+	// register _pending
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_pending", prefix),
+			Help: "reports total number of pending migration requests",
+		},
+		func() float64 { return float64(dbs.TotalPending) },
+	)); err == nil {
+		fmt.Println("CounterFunc '_pending' registered")
+	}
+	// register _in_progress
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_in_progress", prefix),
+			Help: "reports total number of in progress migration requests",
+		},
+		func() float64 { return float64(dbs.TotalInProgress) },
+	)); err == nil {
+		fmt.Println("CounterFunc '_in_progress' registered")
+	}
+	// register _failed
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_failed", prefix),
+			Help: "reports total number of failed migration requests",
+		},
+		func() float64 { return float64(dbs.TotalFailed) },
+	)); err == nil {
+		fmt.Println("CounterFunc '_failed' registered")
+	}
+	// register _term_failed
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_term_failed", prefix),
+			Help: "reports total number of term failed migration requests",
+		},
+		func() float64 { return float64(dbs.TotalTermFailed) },
+	)); err == nil {
+		fmt.Println("CounterFunc '_term_failed' registered")
+	}
+	// register _completed
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_completed", prefix),
+			Help: "reports total number of completed migration requests",
+		},
+		func() float64 { return float64(dbs.TotalCompleted) },
+	)); err == nil {
+		fmt.Println("CounterFunc '_completed' registered")
+	}
+	// register _queued
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_queued", prefix),
+			Help: "reports total number of queued migration requests",
+		},
+		func() float64 { return float64(dbs.TotalQueued) },
+	)); err == nil {
+		fmt.Println("CounterFunc '_queued' registered")
+	}
+	// register _exist_in_db
+	if err := prometheus.Register(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_exist_in_db", prefix),
+			Help: "reports total number of exist in db migration requests",
+		},
+		func() float64 { return float64(dbs.TotalExistInDB) },
+	)); err == nil {
+		fmt.Println("CounterFunc '_exist_in_db' registered")
+	}
+}
+
+func recordMetrics(m *Metrics) {
+	for i := range m.CPU {
+		DbsMetrics.cpuInfo[i].Set(m.CPU[i])
+	}
+
+	totCon, estCon, lisCon := getConnections(m.Connections)
+	DbsMetrics.totalConnections.Set(totCon)
+	DbsMetrics.establishedConnections.Set(estCon)
+	DbsMetrics.listenConnections.Set(lisCon)
+
+	// procfs metrics
+	DbsMetrics.cpuTotal.Set(m.ProcFS.CpuTotal)
+	DbsMetrics.vsize.Set(m.ProcFS.Vsize)
+	DbsMetrics.rss.Set(m.ProcFS.Rss)
+	DbsMetrics.openfds.Set(m.ProcFS.OpenFDs)
+	DbsMetrics.maxfds.Set(m.ProcFS.MaxFDs)
+	DbsMetrics.maxvsize.Set(m.ProcFS.MaxVsize)
+
+	// procfs /proc/stat metrics
+	DbsMetrics.sumusercpus.Set(m.ProcFS.SumUserCPUs)
+	DbsMetrics.sumsystemcpus.Set(m.ProcFS.SumSystemCPUs)
+
+	// cpu percent
+	DbsMetrics.cpupct.Set(m.CpuPercent)
+
+	// load
+	DbsMetrics.load1.Set(m.Load.Load1)
+	DbsMetrics.load5.Set(m.Load.Load5)
+	DbsMetrics.load15.Set(m.Load.Load15)
+
+	// memory virtual
+	DbsMetrics.memvirttotal.Set(float64(m.Memory.Virtual.Total))
+	DbsMetrics.memvirtfree.Set(float64(m.Memory.Virtual.Free))
+	DbsMetrics.memvirtused.Set(float64(m.Memory.Virtual.Used))
+	DbsMetrics.memvirtpct.Set(m.Memory.Virtual.UsedPercent)
+
+	// memory swap
+	DbsMetrics.memswaptotal.Set(float64(m.Memory.Swap.Total))
+	DbsMetrics.memswapfree.Set(float64(m.Memory.Swap.Free))
+	DbsMetrics.memswapused.Set(float64(m.Memory.Swap.Used))
+	DbsMetrics.memswappct.Set(m.Memory.Swap.UsedPercent)
+
+	// open files
+	DbsMetrics.openfiles.Set(float64(len(m.OpenFiles)))
+
+	// go routines
+	// registered in InitMetrics
+
+	// uptime
+	// registered in InitMetrics
+
+	// total requests
+	// registered in InitMetrics
+
+	// throughput, rps, rps physical cpu, rps logical cpu
+	DbsMetrics.rps.Set(m.RPS)
+	DbsMetrics.avggettime.Set(m.AvgGetTime)
+	DbsMetrics.avgposttime.Set(m.AvgPostTime)
+	DbsMetrics.avgputtime.Set(m.AvgPutTime)
+	DbsMetrics.rpsphysicalcpu.Set(m.RPSPhysical)
+	DbsMetrics.rpslogicalcpu.Set(m.RPSLogical)
+
+	// database metrics
+	DbsMetrics.maxdbconn.Set(float64(m.MaxDBConnections))
+	DbsMetrics.maxidleconn.Set(float64(m.MaxIdleConnections))
+
+	// see https://pkg.go.dev/database/sql#DBStats
+	DbsMetrics.maxopenconn.Set(float64(m.DBStats.MaxOpenConnections))
+	DbsMetrics.openconn.Set(float64(m.DBStats.OpenConnections))
+	DbsMetrics.inuseconn.Set(float64(m.DBStats.InUse))
+	DbsMetrics.idleconn.Set(float64(m.DBStats.Idle))
+}
+
+// fetches dbs2go metrics
 func metrics() Metrics {
 	if rstat == nil {
 		rstat = &RequestStats{}
@@ -200,6 +723,27 @@ func metrics() Metrics {
 	return metrics
 }
 
+func promMetrics2(prefix string) {
+	data := metrics()
+
+	recordMetrics(&data)
+}
+
+func getConnections(c []net.ConnectionStat) (float64, float64, float64) {
+	var totCon, estCon, lisCon float64
+	for _, c := range c {
+		v := c.Status
+		switch v {
+		case "ESTABLISHED":
+			estCon++
+		case "LISTEN":
+			lisCon++
+		}
+	}
+	totCon = float64(len(c))
+	return totCon, estCon, lisCon
+}
+
 // helper function to generate metrics in prometheus format
 func promMetrics(prefix string) string {
 	var out string
@@ -213,17 +757,7 @@ func promMetrics(prefix string) string {
 	}
 
 	// connections
-	var totCon, estCon, lisCon uint64
-	for _, c := range data.Connections {
-		v := c.Status
-		switch v {
-		case "ESTABLISHED":
-			estCon++
-		case "LISTEN":
-			lisCon++
-		}
-	}
-	totCon = uint64(len(data.Connections))
+	totCon, estCon, lisCon := getConnections(data.Connections)
 	out += fmt.Sprintf("# HELP %s_total_connections\n", prefix)
 	out += fmt.Sprintf("# TYPE %s_total_connections gauge\n", prefix)
 	out += fmt.Sprintf("%s_total_connections %v\n", prefix, totCon)
@@ -329,7 +863,7 @@ func promMetrics(prefix string) string {
 	out += fmt.Sprintf("# HELP %s_post_requests reports total number of HTTP POST requests\n", prefix)
 	out += fmt.Sprintf("# TYPE %s_post_requests counter\n", prefix)
 	out += fmt.Sprintf("%s_post_requests %v\n", prefix, data.PostRequests)
-	out += fmt.Sprintf("# HELP %s_put_requests reports total number of HTTP POST requests\n", prefix)
+	out += fmt.Sprintf("# HELP %s_put_requests reports total number of HTTP PUT requests\n", prefix)
 	out += fmt.Sprintf("# TYPE %s_put_requests counter\n", prefix)
 	out += fmt.Sprintf("%s_put_requests %v\n", prefix, data.PutRequests)
 
@@ -350,15 +884,11 @@ func promMetrics(prefix string) string {
 	out += fmt.Sprintf("# TYPE %s_avg_put_time gauge\n", prefix)
 	out += fmt.Sprintf("%s_avg_put_time %v\n", prefix, data.AvgPutTime)
 
-	out += fmt.Sprintf("# HELP %s_avg_get_time reports average get request time\n", prefix)
-	out += fmt.Sprintf("# TYPE %s_avg_get_time gauge\n", prefix)
-	out += fmt.Sprintf("%s_avg_get_time %v\n", prefix, data.AvgGetTime)
-
 	out += fmt.Sprintf("# HELP %s_rps_physical_cpu reports request per second average weighted by physical CPU cores\n", prefix)
 	out += fmt.Sprintf("# TYPE %s_rps_physical_cpu gauge\n", prefix)
 	out += fmt.Sprintf("%s_rps_physical_cpu %v\n", prefix, data.RPSPhysical)
 
-	out += fmt.Sprintf("# HELP %s_rps_logical_cpu reports request per second average weighted by logical CPU cures\n", prefix)
+	out += fmt.Sprintf("# HELP %s_rps_logical_cpu reports request per second average weighted by logical CPU cores\n", prefix)
 	out += fmt.Sprintf("# TYPE %s_rps_logical_cpu gauge\n", prefix)
 	out += fmt.Sprintf("%s_rps_logical_cpu %v\n", prefix, data.RPSLogical)
 
@@ -367,7 +897,7 @@ func promMetrics(prefix string) string {
 	out += fmt.Sprintf("# TYPE %s_max_db_connections gauge\n", prefix)
 	out += fmt.Sprintf("%s_max_db_connections %v\n", prefix, data.MaxDBConnections)
 
-	out += fmt.Sprintf("# HELP %s_max_idle_connections reports max number of idls DB connections\n", prefix)
+	out += fmt.Sprintf("# HELP %s_max_idle_connections reports max number of idle DB connections\n", prefix)
 	out += fmt.Sprintf("# TYPE %s_max_idle_connections gauge\n", prefix)
 	out += fmt.Sprintf("%s_max_idle_connections %v\n", prefix, data.MaxIdleConnections)
 

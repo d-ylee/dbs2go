@@ -192,6 +192,7 @@ func Handlers() *mux.Router {
 	router.HandleFunc(basePath("/healthz"), StatusHandler).Methods("GET")
 	router.HandleFunc(basePath("/serverinfo"), ServerInfoHandler).Methods("GET")
 	router.HandleFunc(basePath("/metrics"), MetricsHandler).Methods("GET")
+	router.HandleFunc(basePath("/runtimemetrics"), RuntimeMetricsHandler).Methods("GET")
 	router.HandleFunc(basePath("/apis"), ApisHandler).Methods("GET")
 	// backward compatible with Python server
 	router.HandleFunc(basePath("/help"), ApisHandler).Methods("GET")
@@ -455,6 +456,10 @@ func Server(configFile string) {
 	} else {
 		http.Handle("/", Handlers())
 	}
+
+	// initialize prometheus metrics
+	InitMetrics(Config.MetricsPrefix)
+
 	// define our HTTP server
 	addr := fmt.Sprintf(":%d", Config.Port)
 	server := &http.Server{
