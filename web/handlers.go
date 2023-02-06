@@ -157,7 +157,7 @@ func RuntimeMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	promMetrics2(Config.MetricsPrefix)
+	promMetrics2()
 	promhttp.Handler().ServeHTTP(w, r)
 	// w.Write([]byte(promMetrics(Config.MetricsPrefix)))
 	// w.WriteHeader(http.StatusOK)

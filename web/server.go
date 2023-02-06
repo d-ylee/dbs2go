@@ -458,7 +458,8 @@ func Server(configFile string) {
 	}
 
 	// initialize prometheus metrics
-	InitMetrics(Config.MetricsPrefix)
+	prefix := fmt.Sprintf("%s2", Config.MetricsPrefix)
+	InitMetrics(prefix)
 
 	// define our HTTP server
 	addr := fmt.Sprintf(":%d", Config.Port)

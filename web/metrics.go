@@ -219,131 +219,160 @@ type DBSMetrics struct {
 	// existindb  prometheus.Counter
 }
 
-var DbsMetrics DBSMetrics
+// contains the prometheus gauges and counters for DBSMetrics using the default registry
+var dbsMetrics DBSMetrics
 
+// InitMetrics initializes DBS metrics into the default Prometheus metrics registry
 func InitMetrics(prefix string) {
+	// prometheus.MustRegister(prometheus.NewGoCollector())
 	c, _ := cpu.Percent(time.Millisecond, true)
-	DbsMetrics.cpuInfo = make([]prometheus.Gauge, len(c))
-	for i := range DbsMetrics.cpuInfo {
-		DbsMetrics.cpuInfo[i] = promauto.NewGauge(prometheus.GaugeOpts{
-			Name:        fmt.Sprintf("%s_cpu", prefix),
+	dbsMetrics.cpuInfo = make([]prometheus.Gauge, len(c))
+	for i := range dbsMetrics.cpuInfo {
+		dbsMetrics.cpuInfo[i] = promauto.NewGauge(prometheus.GaugeOpts{
+			Namespace:   prefix,
+			Name:        "cpu",
 			Help:        "percentage of cpu used per cpu",
 			ConstLabels: prometheus.Labels{"core": strconv.FormatInt(int64(i), 10)},
 		})
 	}
 
-	DbsMetrics.totalConnections = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_total_connections", prefix),
-		Help: "total number of connections",
+	dbsMetrics.totalConnections = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "total_connections",
+		Help:      "total number of connections",
 	})
-	DbsMetrics.establishedConnections = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_established_connections", prefix),
-		Help: "established connections",
+	dbsMetrics.establishedConnections = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "established_connections",
+		Help:      "established connections",
 	})
-	DbsMetrics.listenConnections = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_listen_connections", prefix),
-		Help: "listen connections",
+	dbsMetrics.listenConnections = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "listen_connections",
+		Help:      "listen connections",
 	})
 
 	// procfs metrics
-	DbsMetrics.cpuTotal = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_procf_cputotal", prefix),
-		Help: "ProcFS CPU Total",
+	dbsMetrics.cpuTotal = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "procf_cputotal",
+		Help:      "ProcFS CPU Total",
 	})
-	DbsMetrics.vsize = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_procf_vsize", prefix),
-		Help: "ProcFS vsize",
+	dbsMetrics.vsize = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "procf_vsize",
+		Help:      "ProcFS vsize",
 	})
-	DbsMetrics.rss = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_procfs_rss", prefix),
-		Help: "ProcFS RSS",
+	dbsMetrics.rss = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "procfs_rss",
+		Help:      "ProcFS RSS",
 	})
-	DbsMetrics.openfds = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_procfs_openfds", prefix),
-		Help: "ProcFS OpenFDs",
+	dbsMetrics.openfds = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "procfs_openfds",
+		Help:      "ProcFS OpenFDs",
 	})
-	DbsMetrics.maxfds = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_procfs_maxfds", prefix),
-		Help: "ProcFS MaxFDs",
+	dbsMetrics.maxfds = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      fmt.Sprintf("%s_procfs_maxfds", prefix),
+		Help:      "ProcFS MaxFDs",
 	})
-	DbsMetrics.maxvsize = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_procfs_maxvsize", prefix),
-		Help: "ProcFS MaxVSize",
+	dbsMetrics.maxvsize = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "procfs_maxvsize",
+		Help:      "ProcFS MaxVSize",
 	})
 
 	// procfs /proc/stat metrics
-	DbsMetrics.sumusercpus = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_procfs_sumusercpus", prefix),
-		Help: "ProcFS SumUserCPUs",
+	dbsMetrics.sumusercpus = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "procfs_sumusercpus",
+		Help:      "ProcFS SumUserCPUs",
 	})
-	DbsMetrics.sumsystemcpus = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_procfs_sumsystemcpus", prefix),
-		Help: "ProcFS SumSystemCPUs",
+	dbsMetrics.sumsystemcpus = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "procfs_sumsystemcpus",
+		Help:      "ProcFS SumSystemCPUs",
 	})
 
 	// cpu percent
-	DbsMetrics.cpupct = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_cpu_pct", prefix),
+	dbsMetrics.cpupct = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "cpu_pct",
 	})
 
 	// load
-	DbsMetrics.load1 = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_load1", prefix),
+	dbsMetrics.load1 = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "load1",
 	})
-	DbsMetrics.load5 = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_load5", prefix),
+	dbsMetrics.load5 = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "load5",
 	})
-	DbsMetrics.load15 = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_load15", prefix),
+	dbsMetrics.load15 = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "load15",
 	})
 
 	// memory virtual
-	DbsMetrics.memvirttotal = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_mem_virt_total", prefix),
-		Help: "reports total virtual memory in bytes",
+	dbsMetrics.memvirttotal = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "mem_virt_total",
+		Help:      "reports total virtual memory in bytes",
 	})
-	DbsMetrics.memvirtfree = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_mem_virt_free", prefix),
-		Help: "reports free virtual memory in bytes",
+	dbsMetrics.memvirtfree = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "mem_virt_free",
+		Help:      "reports free virtual memory in bytes",
 	})
-	DbsMetrics.memvirtused = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_mem_virt_used", prefix),
-		Help: "reports used virtual memory in bytes",
+	dbsMetrics.memvirtused = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "mem_virt_used",
+		Help:      "reports used virtual memory in bytes",
 	})
-	DbsMetrics.memvirtpct = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_mem_virt_pct", prefix),
-		Help: "reports percentage of virtual memory",
+	dbsMetrics.memvirtpct = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "mem_virt_pct",
+		Help:      "reports percentage of virtual memory",
 	})
 
 	// memory swap
-	DbsMetrics.memswaptotal = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_mem_swap_total", prefix),
-		Help: "reports total swap memory in bytes",
+	dbsMetrics.memswaptotal = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "mem_swap_total",
+		Help:      "reports total swap memory in bytes",
 	})
-	DbsMetrics.memswapfree = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_mem_swap_free", prefix),
-		Help: "reports free swap memory in bytes",
+	dbsMetrics.memswapfree = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "mem_swap_free",
+		Help:      "reports free swap memory in bytes",
 	})
-	DbsMetrics.memswapused = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_mem_swap_used", prefix),
-		Help: "reports used swap memory in bytes",
+	dbsMetrics.memswapused = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "mem_swap_used",
+		Help:      "reports used swap memory in bytes",
 	})
-	DbsMetrics.memswappct = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_mem_swap_pct", prefix),
-		Help: "reports percentage swap memory",
+	dbsMetrics.memswappct = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "mem_swap_pct",
+		Help:      "reports percentage swap memory",
 	})
 
 	// open files
-	DbsMetrics.openfiles = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_open_files", prefix),
-		Help: "reports total number of open file descriptors",
+	dbsMetrics.openfiles = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "open_files",
+		Help:      "reports total number of open file descriptors",
 	})
 
 	// go routines
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_goroutines", prefix),
-			Help: "reports total number of go routines",
+			Namespace: prefix,
+			Name:      "goroutines",
+			Help:      "reports total number of go routines",
 		},
 		func() float64 { return float64(runtime.NumGoroutine()) },
 	)); err == nil {
@@ -353,8 +382,9 @@ func InitMetrics(prefix string) {
 	// go uptime
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_uptime", prefix),
-			Help: "reports server uptime in seconds",
+			Namespace: prefix,
+			Name:      "uptime",
+			Help:      "reports server uptime in seconds",
 		},
 		func() float64 { return float64(time.Since(StartTime).Seconds()) },
 	)); err == nil {
@@ -364,8 +394,9 @@ func InitMetrics(prefix string) {
 	// go uptime
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_get_requests", prefix),
-			Help: "reports total number of HTTP GET requests",
+			Namespace: prefix,
+			Name:      "get_requests",
+			Help:      "reports total number of HTTP GET requests",
 		},
 		func() float64 { return float64(TotalGetRequests) },
 	)); err == nil {
@@ -373,8 +404,9 @@ func InitMetrics(prefix string) {
 	}
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_post_requests", prefix),
-			Help: "reports total number of HTTP POST requests",
+			Namespace: prefix,
+			Name:      "post_requests",
+			Help:      "reports total number of HTTP POST requests",
 		},
 		func() float64 { return float64(TotalPostRequests) },
 	)); err == nil {
@@ -382,8 +414,9 @@ func InitMetrics(prefix string) {
 	}
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_put_requests", prefix),
-			Help: "reports total number of HTTP PUT requests",
+			Namespace: prefix,
+			Name:      "put_requests",
+			Help:      "reports total number of HTTP PUT requests",
 		},
 		func() float64 { return float64(TotalPutRequests) },
 	)); err == nil {
@@ -391,114 +424,132 @@ func InitMetrics(prefix string) {
 	}
 
 	// throughput, rps, rps physical cpu, rps logical cpu
-	DbsMetrics.rps = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_rps", prefix),
-		Help: "reports request per second average",
+	dbsMetrics.rps = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "rps",
+		Help:      "reports request per second average",
 	})
-	DbsMetrics.avggettime = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_avg_get_time", prefix),
-		Help: "reports average get request time",
+	dbsMetrics.avggettime = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "avg_get_time",
+		Help:      "reports average get request time",
 	})
-	DbsMetrics.avgposttime = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_avg_post_time", prefix),
-		Help: "reports average post request time",
+	dbsMetrics.avgposttime = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "avg_post_time",
+		Help:      "reports average post request time",
 	})
-	DbsMetrics.avgputtime = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_avg_put_time", prefix),
-		Help: "reports average put request time",
+	dbsMetrics.avgputtime = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "avg_put_time",
+		Help:      "reports average put request time",
 	})
-	DbsMetrics.rpsphysicalcpu = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_rps_physical_cpu", prefix),
-		Help: "reports request per second average weighted by physical CPU cores",
+	dbsMetrics.rpsphysicalcpu = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "rps_physical_cpu",
+		Help:      "reports request per second average weighted by physical CPU cores",
 	})
-	DbsMetrics.rpslogicalcpu = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_rps_logical_cpu", prefix),
-		Help: "reports request per second average weighted by logical CPU cores",
+	dbsMetrics.rpslogicalcpu = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "rps_logical_cpu",
+		Help:      "reports request per second average weighted by logical CPU cores",
 	})
 
 	// database metrics
-	DbsMetrics.maxdbconn = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_max_db_connections", prefix),
-		Help: "reports max number of DB conenctions",
+	dbsMetrics.maxdbconn = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "max_db_connections",
+		Help:      "reports max number of DB conenctions",
 	})
-	DbsMetrics.maxidleconn = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_max_idle_connections", prefix),
-		Help: "reports max number of idle DB connections",
+	dbsMetrics.maxidleconn = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "max_idle_connections",
+		Help:      "reports max number of idle DB connections",
 	})
 
-	DbsMetrics.maxopenconn = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_max_open_connections", prefix),
-		Help: "reports max number of open DB connections",
+	dbsMetrics.maxopenconn = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "max_open_connections",
+		Help:      "reports max number of open DB connections",
 	})
-	DbsMetrics.openconn = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_open_connections", prefix),
-		Help: "reports number of established to database (both in use and idle)",
+	dbsMetrics.openconn = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "open_connections",
+		Help:      "reports number of established to database (both in use and idle)",
 	})
-	DbsMetrics.inuseconn = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_in_use_connections", prefix),
-		Help: "reports number of in use database connections",
+	dbsMetrics.inuseconn = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "in_use_connections",
+		Help:      "reports number of in use database connections",
 	})
-	DbsMetrics.idleconn = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_idle_connections", prefix),
-		Help: "reports number of idle database connections",
+	dbsMetrics.idleconn = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: prefix,
+		Name:      "idle_connections",
+		Help:      "reports number of idle database connections",
 	})
 	// register wait_count
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_wait_count", prefix),
-			Help: "reports total number of connections waited for",
+			Namespace: prefix,
+			Name:      "wait_count",
+			Help:      "reports total number of connections waited for",
 		},
 		func() float64 { return float64(dbs.DB.Stats().WaitCount) },
 	)); err == nil {
-		fmt.Println("CounterFunc 'wait_count' registered")
+		fmt.Println("CounterFunc '_wait_count' registered")
 	}
 	// register wait_duration
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_wait_duration", prefix),
-			Help: "reports total time (in sec) blocked waiting for a new connection",
+			Namespace: prefix,
+			Name:      "wait_duration",
+			Help:      "reports total time (in sec) blocked waiting for a new connection",
 		},
 		func() float64 { return float64(dbs.DB.Stats().WaitDuration.Seconds()) },
 	)); err == nil {
-		fmt.Println("CounterFunc 'wait_duration' registered")
+		fmt.Println("CounterFunc '_wait_duration' registered")
 	}
 	// register max_idle_closed
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_max_idle_closed", prefix),
-			Help: "reports total number of connections closed due to SetMaxIdleConns",
+			Namespace: prefix,
+			Name:      "max_idle_closed",
+			Help:      "reports total number of connections closed due to SetMaxIdleConns",
 		},
 		func() float64 { return float64(dbs.DB.Stats().MaxIdleClosed) },
 	)); err == nil {
-		fmt.Println("CounterFunc 'max_idle_closed' registered")
+		fmt.Println("CounterFunc '_max_idle_closed' registered")
 	}
 	// register max_idle_time_closed
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_max_idle_time_closed", prefix),
-			Help: "reports total number of connections closed due to SetConnMaxIdleTime",
+			Namespace: prefix,
+			Name:      "max_idle_time_closed",
+			Help:      "reports total number of connections closed due to SetConnMaxIdleTime",
 		},
 		func() float64 { return float64(dbs.DB.Stats().MaxIdleTimeClosed) },
 	)); err == nil {
-		fmt.Println("CounterFunc 'max_idle_time_closed' registered")
+		fmt.Println("CounterFunc '_max_idle_time_closed' registered")
 	}
 	// register max_lifetime_closed
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_max_lifetime_closed", prefix),
-			Help: "reports total number of connections closed due to SetConnMaxLifetime",
+			Namespace: prefix,
+			Name:      "max_lifetime_closed",
+			Help:      "reports total number of connections closed due to SetConnMaxLifetime",
 		},
 		func() float64 { return float64(dbs.DB.Stats().MaxLifetimeClosed) },
 	)); err == nil {
-		fmt.Println("CounterFunc 'max_lifetime_closed' registered")
+		fmt.Println("CounterFunc '_max_lifetime_closed' registered")
 	}
 
 	// migration server
 	// register _requests
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_requests", prefix),
-			Help: "reports total number of migration requests",
+			Namespace: prefix,
+			Name:      "requests",
+			Help:      "reports total number of migration requests",
 		},
 		func() float64 { return float64(dbs.TotalMigrationRequests) },
 	)); err == nil {
@@ -507,8 +558,9 @@ func InitMetrics(prefix string) {
 	// register _pending
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_pending", prefix),
-			Help: "reports total number of pending migration requests",
+			Namespace: prefix,
+			Name:      "pending",
+			Help:      "reports total number of pending migration requests",
 		},
 		func() float64 { return float64(dbs.TotalPending) },
 	)); err == nil {
@@ -517,8 +569,9 @@ func InitMetrics(prefix string) {
 	// register _in_progress
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_in_progress", prefix),
-			Help: "reports total number of in progress migration requests",
+			Namespace: prefix,
+			Name:      "in_progress",
+			Help:      "reports total number of in progress migration requests",
 		},
 		func() float64 { return float64(dbs.TotalInProgress) },
 	)); err == nil {
@@ -527,8 +580,9 @@ func InitMetrics(prefix string) {
 	// register _failed
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_failed", prefix),
-			Help: "reports total number of failed migration requests",
+			Namespace: prefix,
+			Name:      "failed",
+			Help:      "reports total number of failed migration requests",
 		},
 		func() float64 { return float64(dbs.TotalFailed) },
 	)); err == nil {
@@ -537,8 +591,9 @@ func InitMetrics(prefix string) {
 	// register _term_failed
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_term_failed", prefix),
-			Help: "reports total number of term failed migration requests",
+			Namespace: prefix,
+			Name:      "term_failed",
+			Help:      "reports total number of term failed migration requests",
 		},
 		func() float64 { return float64(dbs.TotalTermFailed) },
 	)); err == nil {
@@ -547,8 +602,9 @@ func InitMetrics(prefix string) {
 	// register _completed
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_completed", prefix),
-			Help: "reports total number of completed migration requests",
+			Namespace: prefix,
+			Name:      "completed",
+			Help:      "reports total number of completed migration requests",
 		},
 		func() float64 { return float64(dbs.TotalCompleted) },
 	)); err == nil {
@@ -557,8 +613,9 @@ func InitMetrics(prefix string) {
 	// register _queued
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_queued", prefix),
-			Help: "reports total number of queued migration requests",
+			Namespace: prefix,
+			Name:      "queued",
+			Help:      "reports total number of queued migration requests",
 		},
 		func() float64 { return float64(dbs.TotalQueued) },
 	)); err == nil {
@@ -567,8 +624,9 @@ func InitMetrics(prefix string) {
 	// register _exist_in_db
 	if err := prometheus.Register(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_exist_in_db", prefix),
-			Help: "reports total number of exist in db migration requests",
+			Namespace: prefix,
+			Name:      "exist_in_db",
+			Help:      "reports total number of exist in db migration requests",
 		},
 		func() float64 { return float64(dbs.TotalExistInDB) },
 	)); err == nil {
@@ -578,48 +636,48 @@ func InitMetrics(prefix string) {
 
 func recordMetrics(m *Metrics) {
 	for i := range m.CPU {
-		DbsMetrics.cpuInfo[i].Set(m.CPU[i])
+		dbsMetrics.cpuInfo[i].Set(m.CPU[i])
 	}
 
 	totCon, estCon, lisCon := getConnections(m.Connections)
-	DbsMetrics.totalConnections.Set(totCon)
-	DbsMetrics.establishedConnections.Set(estCon)
-	DbsMetrics.listenConnections.Set(lisCon)
+	dbsMetrics.totalConnections.Set(totCon)
+	dbsMetrics.establishedConnections.Set(estCon)
+	dbsMetrics.listenConnections.Set(lisCon)
 
 	// procfs metrics
-	DbsMetrics.cpuTotal.Set(m.ProcFS.CpuTotal)
-	DbsMetrics.vsize.Set(m.ProcFS.Vsize)
-	DbsMetrics.rss.Set(m.ProcFS.Rss)
-	DbsMetrics.openfds.Set(m.ProcFS.OpenFDs)
-	DbsMetrics.maxfds.Set(m.ProcFS.MaxFDs)
-	DbsMetrics.maxvsize.Set(m.ProcFS.MaxVsize)
+	dbsMetrics.cpuTotal.Set(m.ProcFS.CpuTotal)
+	dbsMetrics.vsize.Set(m.ProcFS.Vsize)
+	dbsMetrics.rss.Set(m.ProcFS.Rss)
+	dbsMetrics.openfds.Set(m.ProcFS.OpenFDs)
+	dbsMetrics.maxfds.Set(m.ProcFS.MaxFDs)
+	dbsMetrics.maxvsize.Set(m.ProcFS.MaxVsize)
 
 	// procfs /proc/stat metrics
-	DbsMetrics.sumusercpus.Set(m.ProcFS.SumUserCPUs)
-	DbsMetrics.sumsystemcpus.Set(m.ProcFS.SumSystemCPUs)
+	dbsMetrics.sumusercpus.Set(m.ProcFS.SumUserCPUs)
+	dbsMetrics.sumsystemcpus.Set(m.ProcFS.SumSystemCPUs)
 
 	// cpu percent
-	DbsMetrics.cpupct.Set(m.CpuPercent)
+	dbsMetrics.cpupct.Set(m.CpuPercent)
 
 	// load
-	DbsMetrics.load1.Set(m.Load.Load1)
-	DbsMetrics.load5.Set(m.Load.Load5)
-	DbsMetrics.load15.Set(m.Load.Load15)
+	dbsMetrics.load1.Set(m.Load.Load1)
+	dbsMetrics.load5.Set(m.Load.Load5)
+	dbsMetrics.load15.Set(m.Load.Load15)
 
 	// memory virtual
-	DbsMetrics.memvirttotal.Set(float64(m.Memory.Virtual.Total))
-	DbsMetrics.memvirtfree.Set(float64(m.Memory.Virtual.Free))
-	DbsMetrics.memvirtused.Set(float64(m.Memory.Virtual.Used))
-	DbsMetrics.memvirtpct.Set(m.Memory.Virtual.UsedPercent)
+	dbsMetrics.memvirttotal.Set(float64(m.Memory.Virtual.Total))
+	dbsMetrics.memvirtfree.Set(float64(m.Memory.Virtual.Free))
+	dbsMetrics.memvirtused.Set(float64(m.Memory.Virtual.Used))
+	dbsMetrics.memvirtpct.Set(m.Memory.Virtual.UsedPercent)
 
 	// memory swap
-	DbsMetrics.memswaptotal.Set(float64(m.Memory.Swap.Total))
-	DbsMetrics.memswapfree.Set(float64(m.Memory.Swap.Free))
-	DbsMetrics.memswapused.Set(float64(m.Memory.Swap.Used))
-	DbsMetrics.memswappct.Set(m.Memory.Swap.UsedPercent)
+	dbsMetrics.memswaptotal.Set(float64(m.Memory.Swap.Total))
+	dbsMetrics.memswapfree.Set(float64(m.Memory.Swap.Free))
+	dbsMetrics.memswapused.Set(float64(m.Memory.Swap.Used))
+	dbsMetrics.memswappct.Set(m.Memory.Swap.UsedPercent)
 
 	// open files
-	DbsMetrics.openfiles.Set(float64(len(m.OpenFiles)))
+	dbsMetrics.openfiles.Set(float64(len(m.OpenFiles)))
 
 	// go routines
 	// registered in InitMetrics
@@ -631,22 +689,22 @@ func recordMetrics(m *Metrics) {
 	// registered in InitMetrics
 
 	// throughput, rps, rps physical cpu, rps logical cpu
-	DbsMetrics.rps.Set(m.RPS)
-	DbsMetrics.avggettime.Set(m.AvgGetTime)
-	DbsMetrics.avgposttime.Set(m.AvgPostTime)
-	DbsMetrics.avgputtime.Set(m.AvgPutTime)
-	DbsMetrics.rpsphysicalcpu.Set(m.RPSPhysical)
-	DbsMetrics.rpslogicalcpu.Set(m.RPSLogical)
+	dbsMetrics.rps.Set(m.RPS)
+	dbsMetrics.avggettime.Set(m.AvgGetTime)
+	dbsMetrics.avgposttime.Set(m.AvgPostTime)
+	dbsMetrics.avgputtime.Set(m.AvgPutTime)
+	dbsMetrics.rpsphysicalcpu.Set(m.RPSPhysical)
+	dbsMetrics.rpslogicalcpu.Set(m.RPSLogical)
 
 	// database metrics
-	DbsMetrics.maxdbconn.Set(float64(m.MaxDBConnections))
-	DbsMetrics.maxidleconn.Set(float64(m.MaxIdleConnections))
+	dbsMetrics.maxdbconn.Set(float64(m.MaxDBConnections))
+	dbsMetrics.maxidleconn.Set(float64(m.MaxIdleConnections))
 
 	// see https://pkg.go.dev/database/sql#DBStats
-	DbsMetrics.maxopenconn.Set(float64(m.DBStats.MaxOpenConnections))
-	DbsMetrics.openconn.Set(float64(m.DBStats.OpenConnections))
-	DbsMetrics.inuseconn.Set(float64(m.DBStats.InUse))
-	DbsMetrics.idleconn.Set(float64(m.DBStats.Idle))
+	dbsMetrics.maxopenconn.Set(float64(m.DBStats.MaxOpenConnections))
+	dbsMetrics.openconn.Set(float64(m.DBStats.OpenConnections))
+	dbsMetrics.inuseconn.Set(float64(m.DBStats.InUse))
+	dbsMetrics.idleconn.Set(float64(m.DBStats.Idle))
 }
 
 // fetches dbs2go metrics
@@ -723,12 +781,14 @@ func metrics() Metrics {
 	return metrics
 }
 
-func promMetrics2(prefix string) {
+// get latest metrics and records them to prometheus registry
+func promMetrics2() {
 	data := metrics()
 
 	recordMetrics(&data)
 }
 
+// get connection metrics
 func getConnections(c []net.ConnectionStat) (float64, float64, float64) {
 	var totCon, estCon, lisCon float64
 	for _, c := range c {
